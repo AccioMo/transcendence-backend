@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import fastify from 'fastify';
 import { registerRoutes } from './routes';
 import { setupWebSockets } from './websockets';
