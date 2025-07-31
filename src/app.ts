@@ -1,4 +1,5 @@
 import fastify from 'fastify';
+import { FastifyRequest } from 'fastify';
 
 const app = fastify({ logger: true });
 
@@ -46,13 +47,15 @@ app.post('/api/game/create', async (request, reply) => {
 
 app.post('/api/game/join/:gameId', async (request, reply) => {
     // Join existing game
-    return { message: 'Joined game successfully', gameId: request.params.gameId };
+    const { gameId } = request.params as { gameId: string };
+    return { message: 'Joined game successfully', gameId };
 });
 
 app.get('/api/game/:gameId', async (request, reply) => {
     // Get game state
+    const { gameId } = request.params as { gameId: string };
     return { 
-        gameId: request.params.gameId,
+        gameId,
         players: [],
         status: 'waiting',
         score: { player1: 0, player2: 0 }
@@ -195,19 +198,31 @@ app.delete('/api/friends/:friendId', async (request, reply) => {
 app.register(async function (fastify) {
     await fastify.register(require('@fastify/websocket'));
     
-    fastify.get('/ws/game/:gameId', { websocket: true }, (connection, req) => {
-        // WebSocket connection for real-time game updates
-        connection.socket.on('message', message => {
+    (fastify as any).get('/ws/game/:gameId', { websocket: true }, (connection: any, req: any) => {
+        const gameId = req.params.gameId;
+        
+        connection.socket.on('message', (message: any) => {
             // Handle real-time game messages
-            connection.socket.send(JSON.stringify({ type: 'game_update', data: {} }));
+            const data = { type: 'game_update', gameId, data: {} };
+            connection.socket.send(JSON.stringify(data));
+        });
+        
+        connection.socket.on('close', () => {
+            console.log(`Game WebSocket connection closed for game: ${gameId}`);
         });
     });
     
-    fastify.get('/ws/chat/:roomId', { websocket: true }, (connection, req) => {
-        // WebSocket connection for real-time chat
-        connection.socket.on('message', message => {
+    (fastify as any).get('/ws/chat/:roomId', { websocket: true }, (connection: any, req: any) => {
+        const roomId = req.params.roomId;
+        
+        connection.socket.on('message', (message: any) => {
             // Handle real-time chat messages
-            connection.socket.send(JSON.stringify({ type: 'new_message', data: {} }));
+            const data = { type: 'new_message', roomId, data: {} };
+            connection.socket.send(JSON.stringify(data));
+        });
+        
+        connection.socket.on('close', () => {
+            console.log(`Chat WebSocket connection closed for room: ${roomId}`);
         });
     });
 });
